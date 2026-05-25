@@ -1,12 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python *)",
-      "Bash(python3 *)",
-      "Bash(pip *)",
-      "Bash(pip3 *)",
-      "Bash(source *)",
-      "Bash(cd *)",
+      "Bash",
       "Read",
       "Edit",
       "Write"
