@@ -44,5 +44,12 @@ env/
 .coverage
 htmlcov/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Saved filters data
+saved_filters.json
+
 # OS
 .DS_Store

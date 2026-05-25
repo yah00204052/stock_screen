@@ -2,3 +2,5 @@ yfinance
 pandas
 numpy
 click
+fastapi
+uvicorn[standard]
