@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict
 import pandas as pd
 from data_source import YahooFinanceSource
-from indicators import ma_crossover, above_resistance, volume_trend
+from indicators import ma_crossover, above_resistance, volume_trend, recent_new_high
 
 
 @dataclass
@@ -29,6 +29,8 @@ class ScreenResult:
     resistance: float
     current_volume: float
     avg_volume: float
+    made_recent_high: bool = False
+    period_high: float = 0.0
 
 
 class StockScreener:
@@ -43,6 +45,8 @@ class StockScreener:
         require_ma_bullish: bool = False,
         require_above_resistance: bool = False,
         require_high_volume: bool = False,
+        require_new_high: bool = False,
+        new_high_sessions: int = 5,
     ) -> List[ScreenResult]:
         """
         Screen a list of tickers against specified criteria.
@@ -54,6 +58,8 @@ class StockScreener:
             require_ma_bullish: Require 20-MA above 50-MA
             require_above_resistance: Require price above 20-day resistance
             require_high_volume: Require volume above 20-day average
+            require_new_high: Require a new ~1-year high in the last N sessions
+            new_high_sessions: Number of trailing sessions to check for a new high
 
         Returns:
             List of stocks that pass all enabled filters
@@ -96,6 +102,10 @@ class StockScreener:
             if require_high_volume and not high_vol:
                 continue
 
+            made_high, _, period_high = recent_new_high(data, sessions=new_high_sessions)
+            if require_new_high and not made_high:
+                continue
+
             # All filters passed
             result = ScreenResult(
                 ticker=ticker,
@@ -111,6 +121,8 @@ class StockScreener:
                 resistance=resistance,
                 current_volume=cur_vol,
                 avg_volume=avg_vol,
+                made_recent_high=made_high,
+                period_high=period_high,
             )
             results.append(result)
 

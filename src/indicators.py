@@ -81,6 +81,41 @@ def volume_trend(
     return is_high, current_vol, avg_vol
 
 
+def recent_new_high(
+    data: pd.DataFrame,
+    sessions: int = 5,
+    lookback: int = 252,
+) -> Tuple[bool, float, float]:
+    """
+    Check if the stock made a new high (highest high over the trailing
+    `lookback` sessions, ~1 trading year) on any of the last `sessions` days.
+
+    A day counts as a new high when its High equals the rolling maximum of
+    High ending that day, i.e. it set a fresh 52-week high on that session.
+
+    Returns: (made_recent_high, current_price, period_high)
+    """
+    high = data['High']
+    close = data['Close']
+
+    # Handle case where these are DataFrames with single column
+    if isinstance(high, pd.DataFrame):
+        high = high.iloc[:, 0]
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+
+    # Rolling max includes the current day, so a day equals the rolling max
+    # exactly when it set a new high over the trailing window.
+    rolling_max = high.rolling(window=lookback, min_periods=1).max()
+    is_new_high = high >= rolling_max
+    made_recent = bool(is_new_high.iloc[-sessions:].any())
+
+    current_price = float(close.iloc[-1])
+    period_high = float(high.iloc[-lookback:].max())
+
+    return made_recent, current_price, period_high
+
+
 def sma_series(data: pd.DataFrame, period: int) -> pd.Series:
     """Get the full SMA series for a period."""
     return moving_average(data['Close'], period)
