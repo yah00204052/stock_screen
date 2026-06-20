@@ -38,6 +38,8 @@ env/
 # Data cache
 .cache/
 *.cache
+data/
+*.parquet
 
 # Testing
 .pytest_cache/

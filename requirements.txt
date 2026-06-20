@@ -1,6 +1,8 @@
 yfinance
 pandas
 numpy
+pyarrow
 click
 fastapi
 uvicorn[standard]
+pytest
