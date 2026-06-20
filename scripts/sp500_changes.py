@@ -14,7 +14,7 @@ import requests
 
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-HEADERS = {"User-Agent": "sp500-screener/1.0 (research tool)"}
+HEADERS = {"User-Agent": "sp500-screener/1.0 (research tool; contact yah00204052@yahoo.com)"}
 
 
 def fetch_sp500_changes() -> pd.DataFrame:
