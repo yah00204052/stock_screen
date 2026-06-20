@@ -38,6 +38,7 @@ env/
 # Data cache
 .cache/
 *.cache
+data/
 
 # Testing
 .pytest_cache/
