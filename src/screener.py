@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict
 import pandas as pd
 from data_source import YahooFinanceSource
-from indicators import ma_crossover, above_resistance, volume_trend, recent_new_high
+from indicators import ma_crossover, above_resistance, volume_trend, recent_new_high, consecutive_decline
 
 
 @dataclass
@@ -31,6 +31,7 @@ class ScreenResult:
     avg_volume: float
     made_recent_high: bool = False
     period_high: float = 0.0
+    consecutive_down_days: int = 0
 
 
 class StockScreener:
@@ -47,6 +48,8 @@ class StockScreener:
         require_high_volume: bool = False,
         require_new_high: bool = False,
         new_high_sessions: int = 5,
+        require_consecutive_decline: bool = False,
+        decline_sessions: int = 10,
     ) -> List[ScreenResult]:
         """
         Screen a list of tickers against specified criteria.

@@ -116,6 +116,30 @@ def recent_new_high(
     return made_recent, current_price, period_high
 
 
+def consecutive_decline(
+    data: pd.DataFrame,
+    sessions: int = 10,
+) -> Tuple[bool, int]:
+    """
+    Check if close has fallen on every one of the last `sessions` days.
+    Returns: (is_declining, actual_consecutive_down_days)
+    """
+    close = data['Close']
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+
+    daily_change = close.diff()
+    # Count how many consecutive down days ending today
+    streak = 0
+    for change in reversed(daily_change.dropna().tolist()):
+        if change < 0:
+            streak += 1
+        else:
+            break
+
+    return streak >= sessions, streak
+
+
 def sma_series(data: pd.DataFrame, period: int) -> pd.Series:
     """Get the full SMA series for a period."""
     return moving_average(data['Close'], period)
