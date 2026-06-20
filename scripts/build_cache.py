@@ -12,6 +12,7 @@ Run:
     venv/bin/python3 scripts/build_cache.py                 # from universe.csv
     venv/bin/python3 scripts/build_cache.py --refresh       # incremental top-up
     venv/bin/python3 scripts/build_cache.py --sp500         # full S&P 500
+    venv/bin/python3 scripts/build_cache.py --sp1500        # S&P 1500 (500+400+600)
     venv/bin/python3 scripts/build_cache.py --tickers AAPL MSFT
 """
 import argparse
@@ -45,14 +46,67 @@ def sp500_tickers() -> list[str]:
     return df["Symbol"].astype(str).str.replace(".", "-", regex=False).tolist()
 
 
+# Wikipedia is the most current public source for the mid/small-cap lists.
+WIKI_CONSTITUENTS = {
+    "sp400": "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies",
+    "sp600": "https://en.wikipedia.org/wiki/List_of_S%26P_600_companies",
+}
+_WIKI_UA = {"User-Agent": "Mozilla/5.0 (stock-screen backtest cache builder)"}
+_SYMBOL_COLS = ("Symbol", "Ticker symbol", "Ticker")
+
+
+def _wiki_constituents(url: str) -> list[str]:
+    """Scrape a Wikipedia constituents table (needs a UA header; 403 otherwise)."""
+    import io
+    import urllib.request
+
+    req = urllib.request.Request(url, headers=_WIKI_UA)
+    html = urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "ignore")
+    tables = pd.read_html(io.StringIO(html))  # needs lxml
+    tbl = next((t for t in tables
+                if any(str(c) in _SYMBOL_COLS for c in t.columns)), None)
+    if tbl is None:
+        raise SystemExit(f"no constituents table found at {url}")
+    col = next(c for c in tbl.columns if str(c) in _SYMBOL_COLS)
+    return (tbl[col].dropna().astype(str)
+            .str.replace(".", "-", regex=False).str.strip().str.upper().tolist())
+
+
+def sp400_tickers() -> list[str]:
+    """Live S&P 400 (MidCap) constituents."""
+    return _wiki_constituents(WIKI_CONSTITUENTS["sp400"])
+
+
+def sp600_tickers() -> list[str]:
+    """Live S&P 600 (SmallCap) constituents."""
+    return _wiki_constituents(WIKI_CONSTITUENTS["sp600"])
+
+
+def sp1500_tickers() -> list[str]:
+    """S&P Composite 1500 = 500 (large) + 400 (mid) + 600 (small), de-duplicated."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for sym in sp500_tickers() + sp400_tickers() + sp600_tickers():
+        if sym not in seen:
+            seen.add(sym)
+            out.append(sym)
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--universe", type=Path, default=DEFAULT_UNIVERSE,
                     help="CSV with a 'symbol' column (default: universe.csv)")
     ap.add_argument("--sp500", action="store_true",
-                    help="use live S&P 500 constituents instead of the CSV")
+                    help="use live S&P 500 (large cap) constituents")
+    ap.add_argument("--sp400", action="store_true",
+                    help="use live S&P 400 (mid cap) constituents")
+    ap.add_argument("--sp600", action="store_true",
+                    help="use live S&P 600 (small cap) constituents")
+    ap.add_argument("--sp1500", action="store_true",
+                    help="use the S&P Composite 1500 (500+400+600)")
     ap.add_argument("--tickers", nargs="+", metavar="SYM",
-                    help="explicit tickers, overrides --universe/--sp500")
+                    help="explicit tickers, overrides --universe/--sp* flags")
     ap.add_argument("--cache-dir", default="data/daily",
                     help="where to store Parquet files (default: data/daily)")
     ap.add_argument("--refresh", action="store_true",
@@ -63,8 +117,14 @@ def main() -> None:
 
     if args.tickers:
         tickers = [t.upper() for t in args.tickers]
+    elif args.sp1500:
+        tickers = sp1500_tickers()
     elif args.sp500:
         tickers = sp500_tickers()
+    elif args.sp400:
+        tickers = sp400_tickers()
+    elif args.sp600:
+        tickers = sp600_tickers()
     else:
         tickers = read_universe_csv(args.universe)
 

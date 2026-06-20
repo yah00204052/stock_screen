@@ -2,6 +2,7 @@ yfinance
 pandas
 numpy
 pyarrow
+lxml
 click
 fastapi
 uvicorn[standard]
