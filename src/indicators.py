@@ -140,6 +140,39 @@ def consecutive_decline(
     return streak >= sessions, streak
 
 
+def relative_strength(
+    stock_data: pd.DataFrame,
+    benchmark_data: pd.DataFrame,
+    period: int = 63,
+) -> Tuple[bool, float, float, float]:
+    """
+    Compare stock return vs benchmark (e.g. SPY) over the last `period` sessions.
+    Default 63 sessions ≈ 3 months of trading days.
+
+    Returns: (is_outperforming, rs_score, stock_return_pct, benchmark_return_pct)
+    rs_score is stock_return_pct - benchmark_return_pct; positive means outperforming.
+    """
+    def period_return(data: pd.DataFrame) -> float:
+        close = data['Close']
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        close = close.dropna()
+        if len(close) < period + 1:
+            return float('nan')
+        start = float(close.iloc[-(period + 1)])
+        end = float(close.iloc[-1])
+        return (end - start) / start * 100
+
+    stock_ret = period_return(stock_data)
+    bench_ret = period_return(benchmark_data)
+
+    if stock_ret != stock_ret or bench_ret != bench_ret:  # NaN check
+        return False, float('nan'), stock_ret, bench_ret
+
+    rs_score = stock_ret - bench_ret
+    return rs_score > 0, rs_score, stock_ret, bench_ret
+
+
 def sma_series(data: pd.DataFrame, period: int) -> pd.Series:
     """Get the full SMA series for a period."""
     return moving_average(data['Close'], period)

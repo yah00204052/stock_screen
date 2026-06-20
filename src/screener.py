@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict
 import pandas as pd
 from data_source import YahooFinanceSource
-from indicators import ma_crossover, above_resistance, volume_trend, recent_new_high, consecutive_decline
+from indicators import ma_crossover, above_resistance, volume_trend, recent_new_high, consecutive_decline, relative_strength
 
 
 @dataclass
@@ -32,6 +32,9 @@ class ScreenResult:
     made_recent_high: bool = False
     period_high: float = 0.0
     consecutive_down_days: int = 0
+    rs_score: float = 0.0
+    rs_stock_return: float = 0.0
+    rs_bench_return: float = 0.0
 
 
 class StockScreener:
@@ -50,6 +53,9 @@ class StockScreener:
         new_high_sessions: int = 5,
         require_consecutive_decline: bool = False,
         decline_sessions: int = 10,
+        require_rs_positive: bool = False,
+        rs_period: int = 63,
+        rs_benchmark: str = "SPY",
     ) -> List[ScreenResult]:
         """
         Screen a list of tickers against specified criteria.
@@ -67,6 +73,8 @@ class StockScreener:
         Returns:
             List of stocks that pass all enabled filters
         """
+        benchmark_data = self.data_source.fetch_stock_data(rs_benchmark) if require_rs_positive else None
+
         results = []
 
         for ticker in tickers:
@@ -109,6 +117,18 @@ class StockScreener:
             if require_new_high and not made_high:
                 continue
 
+            is_declining, down_streak = consecutive_decline(data, sessions=decline_sessions)
+            if require_consecutive_decline and not is_declining:
+                continue
+
+            rs_outperforming, rs_score, rs_stock_ret, rs_bench_ret = (
+                relative_strength(data, benchmark_data, period=rs_period)
+                if benchmark_data is not None
+                else (True, 0.0, 0.0, 0.0)
+            )
+            if require_rs_positive and not rs_outperforming:
+                continue
+
             # All filters passed
             result = ScreenResult(
                 ticker=ticker,
@@ -126,6 +146,10 @@ class StockScreener:
                 avg_volume=avg_vol,
                 made_recent_high=made_high,
                 period_high=period_high,
+                consecutive_down_days=down_streak,
+                rs_score=rs_score,
+                rs_stock_return=rs_stock_ret,
+                rs_bench_return=rs_bench_ret,
             )
             results.append(result)
 
